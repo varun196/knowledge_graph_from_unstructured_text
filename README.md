@@ -15,4 +15,17 @@ The following installation steps are written w.r.t. linux operating system and p
     `python3 -m spacy download en_core_web_sm`
 5. Install nltk:
     `pip3 install nltk`
-6. Install nltk data. Refer: https://www.nltk.org/data.html
+6. Install required nltk data. Either install required packages individually or install all packages by using
+    `python -m nltk.downloader all`
+    Refer: https://www.nltk.org/data.html
+7. Install stanfordcorenlp python package:
+    `pip3 install stanfordcorenlp`
+8. Download and unzip stanford-corenlp-full: https://stanfordnlp.github.io/CoreNLP/download.html
+
+# Running knowledge_graph.py
+
+`python3 knowledge_graphl.py <nltk/stanford/spacy> [ <nltk/stanford/spacy> <nltk/stanford/spacy>]`
+ 
+ nltk runs Named Entity Recognition using custom code written with help of NLTK
+ stanford runs NER using stanford's library
+ spacy uses spacy's pre-trained models for NER

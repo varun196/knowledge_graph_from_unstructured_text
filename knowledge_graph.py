@@ -1,4 +1,5 @@
 import nltk
+import sys
 # For Spacy:
 import spacy
 from spacy import displacy
@@ -10,8 +11,9 @@ import tkinter
 import re
 
 class StanfordNER:
-    stanford_ner_tagger = nltk.tag.StanfordNERTagger('/home/varun/Downloads/Temp/ADBI_capstone/Project/stanford-ner-2018-10-16/classifiers/english.all.3class.distsim.crf.ser.gz',
-        '/home/varun/Downloads/Temp/ADBI_capstone/Project/stanford-ner-2018-10-16/stanford-ner.jar')
+    def __init__(self,loc):
+        self.stanford_ner_tagger = nltk.tag.StanfordNERTagger(loc+'/classifiers/english.all.3class.distsim.crf.ser.gz',
+        loc+'/stanford-ner.jar')
 
     def ner(self,doc):
         sentences = nltk.sent_tokenize(doc)
@@ -52,32 +54,48 @@ class NltkNER:
             chunks.append(cp.parse(sent))
         return chunks
 
-doc = "The fourth Wells account moving to another agency is the packaged paper-products division of Georgia-Pacific Corp., which arrived at Wells only last fall. Like Hertz and the History Channel, it is also leaving for an Omnicom-owned agency, the BBDO South unit of BBDO Worldwide. BBDO South in Atlanta, which handles corporate advertising for Georgia-Pacific, will assume additional duties for brands like Angel Soft toilet tissue and Sparkle paper towels, said Ken Haldin, a spokesman for Georgia-Pacific in Atlanta."
+def nltk_ner(doc):
+    print("NLTK: \n")
+    # NLTK NER
+    nltk_ner = NltkNER()
+    tagged = nltk_ner.ner(doc)
+    print("Tagged: \n")
+    pprint(tagged)
+    print("Tree: \n")
+    for leaves in tagged:
+        print(leaves)
+        #leaves.draw()
+    print("\n")
 
-print("NLTK: \n")
-# NLTK NER
-nltk_ner = NltkNER()
-tagged = nltk_ner.ner(doc)
-print("Tagged: \n")
-pprint(tagged)
-print("Tree: \n")
-for leaves in tagged:
-    print(leaves)
-    leaves.draw()
+def stanford_ner(doc):
+    print("Provide (relative/absolute) path to stanford ner package. Press carriage return to use './stanford-ner-2018-10-16' as path") 
+    loc = input()
+    print("Stanford (may take a while): \n")
+    if(loc == ''):
+        loc = "./stanford-ner-2018-10-16"
+    stanford_ner = StanfordNER(loc)
+    tagged = stanford_ner.ner(doc)
+    print(tagged)
+    print("\n")
 
-print("\n")
+def spacy_ner(doc):
+    print("Spacy: \n")
+    spacy_ner = SpacyNER()
+    tagged = spacy_ner.ner(doc)
+    print(tagged)
+    print("\n")
 
-# Stanford NER 
+def main():
+    if len(sys.argv) == 1:
+        print("Usage:   python3 knowledge_graph.py <nltk/stanford/spacy> [<nltk/stanford/spacy> <nltk/stanford/spacy>]")
+    
+    doc = "The fourth Wells account moving to another agency is the packaged paper-products division of Georgia-Pacific Corp., which arrived at Wells only last fall. Like Hertz and the History Channel, it is also leaving for an Omnicom-owned agency, the BBDO South unit of BBDO Worldwide. BBDO South in Atlanta, which handles corporate advertising for Georgia-Pacific, will assume additional duties for brands like Angel Soft toilet tissue and Sparkle paper towels, said Ken Haldin, a spokesman for Georgia-Pacific in Atlanta."
 
-print("Stanford: \n") 
-stanford_ner = StanfordNER()
-tagged = stanford_ner.ner(doc)
-print(tagged)
-
-print("\n")
-# Spacy NER
-
-print("Spacy: \n")
-spacy_ner = SpacyNER()
-tagged = spacy_ner.ner(doc)
-print(tagged)
+    for i in range(1,len(sys.argv)):
+        if(sys.argv[i] == "nltk"):
+            nltk_ner(doc)
+        elif(sys.argv[i]=="stanford"):
+            stanford_ner(doc)
+        elif(sys.argv[i]=="spacy"):
+            spacy_ner(doc)
+main()
