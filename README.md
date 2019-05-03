@@ -1,5 +1,6 @@
-# Knowledge_Graph
-Building knowledge graph from input data
+# knowledge_graph.py
+
+Performs Named Entity Recognition (NER) on input data by using either NLTK, Spacy or Stanford (or all of them). Also performs coreference resolution. The coreference is used by relation_extractor.py . The recognised NER are used by create_structured_csv.py
 
 # Setup
 
@@ -26,13 +27,31 @@ The following installation steps are written w.r.t. linux operating system and p
 
 Will only run on linux like operating systems, with paths like abc/def/file.txt
 
-Please note that coreference resolution requires around 4GB of free system RAM to run. If this is not available, stanford server may stop with an error or thrashing may cause program to run very slowly.
+Please note that coreference resolution server requires around 4GB of free system RAM to run. If this is not available, stanford server may stop with an error or thrashing may cause program to run very slowly.
 
-`python3 knowledge_graphl.py <nltk/stanford/spacy/verbose> [ <nltk/stanford/spacy/verbose> <nltk/stanford/spacy/verbose> <nltk/stanford/spacy/verbose>]`
+`python3 knowledge_graph.py <options>` 
+
+options:
  
- nltk runs Named Entity Recognition using custom code written with help of NLTK
- stanford runs NER using stanford's library
- spacy uses spacy's pre-trained models for NER
- verbose to get detailed output
+ nltk           runs Named Entity Recognition using custom code written with help of NLTK
+ stanford       runs NER using stanford's library
+ spacy          uses spacy's pre-trained models for NER
+ verbose        to get detailed output
+ optimized      run coreference resolution to get better output. This will increase time taken significantly. 
+                Also will impose a limit on size of each file; so data may need to be split amongst files.
 
-The input unstructured data must be in ./data/input folder. I.e. data folder is in same dir as knowledge_graph.py
+e.g.:
+
+`python3 knowledge_graph.py optimized verbose nltk spacy`
+will o/p ner via nltk and spacy, and perform 
+
+
+### inputs
+
+The input unstructured data files must be in ./data/input folder. I.e. data folder must be in same dir as knowledge_graph.py
+
+### outputs
+
+data/output/ner   ---  contains recognised named entities
+data/output/caches --- Intended to contain result pickles of coreferences obtained by stanford's core nlp
+data/output/kg --- contains input files with coreferences resolved 
