@@ -1,5 +1,6 @@
 import nltk
 import sys
+import pickle
 # For Spacy:
 import spacy
 from spacy import displacy
@@ -9,6 +10,9 @@ from pprint import pprint
 # For custom ER:
 import tkinter
 import re
+# For Coreference resolution
+import json
+from stanfordcorenlp import StanfordCoreNLP
 
 class StanfordNER:
     def __init__(self,loc):
@@ -55,22 +59,22 @@ class NltkNER:
         return chunks
 
 def nltk_ner(doc):
-    print("NLTK: \n")
+    print("\nusing NLTK for NER")
     # NLTK NER
     nltk_ner = NltkNER()
     tagged = nltk_ner.ner(doc)
-    print("Tagged: \n")
+    print("\n\nTagged: \n\n")
     pprint(tagged)
-    print("Tree: \n")
+    print("\n\nTree: \n\n ")
     for leaves in tagged:
         print(leaves)
         #leaves.draw()
     print("\n")
 
 def stanford_ner(doc):
-    print("Provide (relative/absolute) path to stanford ner package. Press carriage return to use './stanford-ner-2018-10-16' as path") 
+    print("Provide (relative/absolute) path to stanford ner package.\n Press carriage return to use './stanford-ner-2018-10-16' as path:") 
     loc = input()
-    print("Stanford (may take a while): \n")
+    print("using Stanford for NER (may take a while):  \n\n\n")
     if(loc == ''):
         loc = "./stanford-ner-2018-10-16"
     stanford_ner = StanfordNER(loc)
@@ -79,17 +83,61 @@ def stanford_ner(doc):
     print("\n")
 
 def spacy_ner(doc):
-    print("Spacy: \n")
+    print("\nusing Spacy for NER\n")
     spacy_ner = SpacyNER()
     tagged = spacy_ner.ner(doc)
     print(tagged)
     print("\n")
 
+class CoreferenceResolver:
+    def generate_coreferences(self,doc,stanford_core_nlp_path):
+        '''
+        pickles results object to coref_res.p
+        the result has the following structure:
+        dict of dict of lists of dicts:  { { [ {} ] } }  -- We are interested in the 'corefs' key { [ { } ] }-- Each list has all coreferences to a given pronoun.
+        '''
+        nlp = StanfordCoreNLP(stanford_core_nlp_path, quiet=False)
+        props = {'annotators': 'coref', 'pipelineLanguage': 'en'}
+        annotated = nlp.annotate(doc, properties=props)
+        print("\nannotated\n\n",annotated,"\n\n")
+        result = json.loads(annotated)
+        # Dump coreferences to a file
+        pickle.dump(result,open( "coref_res.p", "wb" ))
+        # Close server to release memory
+        nlp.close()
+
+    def unpickle(self):
+        result = pickle.load(open( "coref_res.p", "rb" ))
+        result = result['corefs']
+        #print(result)
+        for key in result:
+            None
+            print(result[key]) 
+            print("\n")
+        return result
+    
+    def resolve_coreferences(self):
+        result = pickle.load(open( "coref_res.p", "rb" ))
+        result = result['corefs']
+        None        
+
+def resolve_coreferences(doc,stanford_core_nlp_path):
+    doc = "The Godfather Vito Corleone is the head of the Corleone mafia family in New York. He is at the event of his daughter's wedding. Michael, Vito's youngest son and a decorated WW II Marine is also present at the wedding. Michael seems to be uninterested in being a part of the family business. Vito is a powerful man, and is kind to all those who give him respect but is ruthless against those who do not. But when a powerful and treacherous rival wants to sell drugs and needs the Don's influence for the same, Vito refuses to do it. What follows is a clash between Vito's fading old values and the new ways which may cause Michael to do the thing he was most reluctant in doing and wage a mob war against all the other mafia families which could tear the Corleone family apart."
+    coref = CoreferenceResolver()
+    coref.generate_coreferences(doc,stanford_core_nlp_path)
+    coref.unpickle()
+
 def main():
     if len(sys.argv) == 1:
         print("Usage:   python3 knowledge_graph.py <nltk/stanford/spacy> [<nltk/stanford/spacy> <nltk/stanford/spacy>]")
     
-    doc = "The fourth Wells account moving to another agency is the packaged paper-products division of Georgia-Pacific Corp., which arrived at Wells only last fall. Like Hertz and the History Channel, it is also leaving for an Omnicom-owned agency, the BBDO South unit of BBDO Worldwide. BBDO South in Atlanta, which handles corporate advertising for Georgia-Pacific, will assume additional duties for brands like Angel Soft toilet tissue and Sparkle paper towels, said Ken Haldin, a spokesman for Georgia-Pacific in Atlanta."
+    stanford_core_nlp_path = input("Provide (relative/absolute) path to stanford core nlp package.\n Press carriage return to use './stanford-corenlp-full-2018-10-05' as path:")
+    if(stanford_core_nlp_path == ''):
+        stanford_core_nlp_path = "./stanford-corenlp-full-2018-10-05"
+
+    doc1 = "The fourth Wells account moving to another agency is the packaged paper-products division of Georgia-Pacific Corp., which arrived at Wells only last fall. Like Hertz and the History Channel, it is also leaving for an Omnicom-owned agency, the BBDO South unit of BBDO Worldwide. BBDO South in Atlanta, which handles corporate advertising for Georgia-Pacific, will assume additional duties for brands like Angel Soft toilet tissue and Sparkle paper towels, said Ken Haldin, a spokesman for Georgia-Pacific in Atlanta."
+
+    doc = "The Godfather Vito Corleone is the head of the Corleone mafia family in New York. He is at the event of his daughter's wedding. Michael, Vito's youngest son and a decorated WW II Marine is also present at the wedding. Michael seems to be uninterested in being a part of the family business. Vito is a powerful man, and is kind to all those who give him respect but is ruthless against those who do not. But when a powerful and treacherous rival wants to sell drugs and needs the Don's influence for the same, Vito refuses to do it. What follows is a clash between Vito's fading old values and the new ways which may cause Michael to do the thing he was most reluctant in doing and wage a mob war against all the other mafia families which could tear the Corleone family apart."
 
     for i in range(1,len(sys.argv)):
         if(sys.argv[i] == "nltk"):
@@ -98,4 +146,7 @@ def main():
             stanford_ner(doc)
         elif(sys.argv[i]=="spacy"):
             spacy_ner(doc)
+    
+    resolve_coreferences(doc,stanford_core_nlp_path)
+
 main()

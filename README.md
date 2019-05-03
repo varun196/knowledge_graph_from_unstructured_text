@@ -24,6 +24,8 @@ The following installation steps are written w.r.t. linux operating system and p
 
 # Running knowledge_graph.py
 
+Please note that coreference resolution requires around 4GB of free system RAM to run. If this is not available, stanford server may stop with an error or thrashing may cause program to run very slowly.
+
 `python3 knowledge_graphl.py <nltk/stanford/spacy> [ <nltk/stanford/spacy> <nltk/stanford/spacy>]`
  
  nltk runs Named Entity Recognition using custom code written with help of NLTK
