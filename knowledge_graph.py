@@ -15,7 +15,15 @@ import json
 from stanfordcorenlp import StanfordCoreNLP
 
 class StanfordNER:
-    def __init__(self,loc):
+    def __init__(self):
+        self.get_stanford_ner_location()
+
+    def get_stanford_ner_location(self):
+        print("Provide (relative/absolute) path to stanford ner package.\n Press carriage return to use './stanford-ner-2018-10-16' as path:") 
+        loc = input()
+        print("... Running stanford for NER; this may take some time ...")
+        if(loc == ''):
+            loc = "./stanford-ner-2018-10-16"
         self.stanford_ner_tagger = nltk.tag.StanfordNERTagger(loc+'/classifiers/english.all.3class.distsim.crf.ser.gz',
         loc+'/stanford-ner.jar')
 
@@ -27,12 +35,29 @@ class StanfordNER:
             tagged = self.stanford_ner_tagger.tag(words)
             result.append(tagged)
         return result
+
+    def display(self,ner):
+        print(ner)
+        print("\n")
     
 class SpacyNER:
     def ner(self,doc):    
         nlp = en_core_web_sm.load()
         doc = nlp(doc)
         return [(X.text, X.label_) for X in doc.ents]
+    
+    def ner_to_dict(self,ner):
+        """
+        Expects ner of the form list of tuples 
+        """
+        ner_dict = {}
+        for tup in ner:
+            ner_dict[tup[0]] = tup[1]
+        return ner_dict
+    
+    def display(self,ner):
+        print(ner)
+        print("\n")
 
 class NltkNER:
     def ner(self,doc):
@@ -58,41 +83,19 @@ class NltkNER:
             chunks.append(cp.parse(sent))
         return chunks
 
-def nltk_ner(doc):
-    print("\nusing NLTK for NER")
-    # NLTK NER
-    nltk_ner = NltkNER()
-    tagged = nltk_ner.ner(doc)
-    print("\n\nTagged: \n\n")
-    pprint(tagged)
-    print("\n\nTree: \n\n ")
-    for leaves in tagged:
-        print(leaves)
-        #leaves.draw()
-    print("\n")
-
-def stanford_ner(doc):
-    print("Provide (relative/absolute) path to stanford ner package.\n Press carriage return to use './stanford-ner-2018-10-16' as path:") 
-    loc = input()
-    print("using Stanford for NER (may take a while):  \n\n\n")
-    if(loc == ''):
-        loc = "./stanford-ner-2018-10-16"
-    stanford_ner = StanfordNER(loc)
-    tagged = stanford_ner.ner(doc)
-    print(tagged)
-    print("\n")
-
-def spacy_ner(doc):
-    print("\nusing Spacy for NER\n")
-    spacy_ner = SpacyNER()
-    tagged = spacy_ner.ner(doc)
-    print(tagged)
-    print("\n")
+    def display(self,ner):
+        print("\n\nTagged: \n\n")
+        pprint(ner)
+        print("\n\nTree: \n\n ")
+        for leaves in ner:
+            print(leaves)
+            #leaves.draw()
+        print("\n")
 
 class CoreferenceResolver:
     def generate_coreferences(self,doc,stanford_core_nlp_path):
         '''
-        pickles results object to coref_res.p
+        pickles results object to coref_res.pickle
         the result has the following structure:
         dict of dict of lists of dicts:  { { [ {} ] } }  -- We are interested in the 'corefs' key { [ { } ] }-- Each list has all coreferences to a given pronoun.
         '''
@@ -102,12 +105,12 @@ class CoreferenceResolver:
         print("\nannotated\n\n",annotated,"\n\n")
         result = json.loads(annotated)
         # Dump coreferences to a file
-        pickle.dump(result,open( "coref_res.p", "wb" ))
+        pickle.dump(result,open( "coref_res.pickle", "wb" ))
         # Close server to release memory
         nlp.close()
 
     def unpickle(self):
-        result = pickle.load(open( "coref_res.p", "rb" ))
+        result = pickle.load(open( "coref_res.pickle", "rb" ))
         result = result['corefs']
         #print(result)
         for key in result:
@@ -116,22 +119,29 @@ class CoreferenceResolver:
             print("\n")
         return result
     
-    def resolve_coreferences(self):
-        result = pickle.load(open( "coref_res.p", "rb" ))
+    def resolve_coreferences(self,doc,ner):
+        """
+        Changes doc's coreferences to match the entity present in ner provided.
+        ner must be a dict with entities as keys and names/types as values
+        E.g. { "Varun" : "Person" }
+        """
+        result = pickle.load(open( "coref_res.pickle", "rb" ))
         result = result['corefs']
+        print(ner)
         None        
 
-def resolve_coreferences(doc,stanford_core_nlp_path):
-    doc = "The Godfather Vito Corleone is the head of the Corleone mafia family in New York. He is at the event of his daughter's wedding. Michael, Vito's youngest son and a decorated WW II Marine is also present at the wedding. Michael seems to be uninterested in being a part of the family business. Vito is a powerful man, and is kind to all those who give him respect but is ruthless against those who do not. But when a powerful and treacherous rival wants to sell drugs and needs the Don's influence for the same, Vito refuses to do it. What follows is a clash between Vito's fading old values and the new ways which may cause Michael to do the thing he was most reluctant in doing and wage a mob war against all the other mafia families which could tear the Corleone family apart."
+def resolve_coreferences(doc,stanford_core_nlp_path,ner):
     coref = CoreferenceResolver()
-    coref.generate_coreferences(doc,stanford_core_nlp_path)
-    coref.unpickle()
+    #coref.generate_coreferences(doc,stanford_core_nlp_path)
+    #coref.unpickle()
+    coref.resolve_coreferences(doc,ner)
 
 def main():
     if len(sys.argv) == 1:
         print("Usage:   python3 knowledge_graph.py <nltk/stanford/spacy> [<nltk/stanford/spacy> <nltk/stanford/spacy>]")
+        return None
     
-    stanford_core_nlp_path = input("Provide (relative/absolute) path to stanford core nlp package.\n Press carriage return to use './stanford-corenlp-full-2018-10-05' as path:")
+    stanford_core_nlp_path = input("\n\nProvide (relative/absolute) path to stanford core nlp package.\n Press carriage return to use './stanford-corenlp-full-2018-10-05' as path:")
     if(stanford_core_nlp_path == ''):
         stanford_core_nlp_path = "./stanford-corenlp-full-2018-10-05"
 
@@ -139,14 +149,35 @@ def main():
 
     doc = "The Godfather Vito Corleone is the head of the Corleone mafia family in New York. He is at the event of his daughter's wedding. Michael, Vito's youngest son and a decorated WW II Marine is also present at the wedding. Michael seems to be uninterested in being a part of the family business. Vito is a powerful man, and is kind to all those who give him respect but is ruthless against those who do not. But when a powerful and treacherous rival wants to sell drugs and needs the Don's influence for the same, Vito refuses to do it. What follows is a clash between Vito's fading old values and the new ways which may cause Michael to do the thing he was most reluctant in doing and wage a mob war against all the other mafia families which could tear the Corleone family apart."
 
+    
     for i in range(1,len(sys.argv)):
         if(sys.argv[i] == "nltk"):
-            nltk_ner(doc)
+            print("\nusing NLTK for NER")
+            nltk_ner = NltkNER()
+            named_entities = nltk_ner.ner(doc)
+            nltk_ner.display(named_entities)
+            # ToDo -- Implement ner_to_dict for nltk_ner
+            spacy_ner = SpacyNER()
+            named_entities = spacy_ner .ner_to_dict(spacy_ner.ner(doc))
         elif(sys.argv[i]=="stanford"):
-            stanford_ner(doc)
+            print("using Stanford for NER (may take a while):  \n\n\n")
+            stanford_ner = StanfordNER()
+            tagged = stanford_ner.ner(doc)
+            ner = stanford_ner.ner(doc)
+            stanford_ner.display(ner)
+            # ToDo -- Implement ner_to_dict for stanford_ner
+            named_entities = spacy_ner.ner_to_dict(spacy_ner.ner(doc))
         elif(sys.argv[i]=="spacy"):
-            spacy_ner(doc)
+            print("\nusing Spacy for NER\n")
+            spacy_ner = SpacyNER()
+            named_entities = spacy_ner.ner(doc)
+            spacy_ner.display(named_entities)
+            named_entities = spacy_ner.ner_to_dict(named_entities)
     
-    resolve_coreferences(doc,stanford_core_nlp_path)
+    with open("named_entities.pickle","wb") as f:
+        pickle.dump(named_entities, f)
+
+    print("\nResolving Coreferences... (This may take a while)\n")
+    resolve_coreferences(doc,stanford_core_nlp_path,named_entities)
 
 main()
