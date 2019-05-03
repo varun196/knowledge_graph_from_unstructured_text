@@ -1,6 +1,9 @@
 import nltk
 import sys
 import pickle
+import os
+from collections import defaultdict
+import glob
 # For Spacy:
 import spacy
 from spacy import displacy
@@ -93,7 +96,7 @@ class NltkNER:
         print("\n")
 
 class CoreferenceResolver:
-    def generate_coreferences(self,doc,stanford_core_nlp_path):
+    def generate_coreferences(self,doc,stanford_core_nlp_path,):
         '''
         pickles results object to coref_res.pickle
         the result has the following structure:
@@ -108,76 +111,178 @@ class CoreferenceResolver:
         pickle.dump(result,open( "coref_res.pickle", "wb" ))
         # Close server to release memory
         nlp.close()
+        return result
+
+    def display_dict(self,result):
+        for key in result:
+            print(key,":\n",result[key]) 
+            print("\n")
 
     def unpickle(self):
         result = pickle.load(open( "coref_res.pickle", "rb" ))
-        result = result['corefs']
-        #print(result)
-        for key in result:
-            None
-            print(result[key]) 
-            print("\n")
         return result
     
-    def resolve_coreferences(self,doc,ner):
+    def resolve_coreferences(self,corefs,doc,ner,verbose):
         """
         Changes doc's coreferences to match the entity present in ner provided.
         ner must be a dict with entities as keys and names/types as values
         E.g. { "Varun" : "Person" }
         """
-        result = pickle.load(open( "coref_res.pickle", "rb" ))
-        result = result['corefs']
-        print(ner)
-        None        
+        corefs = corefs['corefs']
+        if verbose:
+            print("Coreferences found: ",len(corefs),"\nThe coreferences are:")
+            self.display_dict(corefs)
+            print("Named entities:")
+            print(ner.keys())
 
-def resolve_coreferences(doc,stanford_core_nlp_path,ner):
-    coref = CoreferenceResolver()
-    #coref.generate_coreferences(doc,stanford_core_nlp_path)
+        # replace all corefs in i th coref list with this
+        replace_coref_with = []
+        
+        # Key is sentence number; value is list of tuples. 
+        # Each tuple is (reference_dict, coreference number)
+        sentence_wise_replacements = defaultdict(list)         # { 0: [ ({},ref#),({},ref#), ...], 1: [({}) ...]... }  
+
+        sentences = nltk.sent_tokenize(doc)
+        for index,coreferences in enumerate(corefs.values()):    # corefs : {[{}]} => coreferences : [{}]
+            # Find which coreference to replace each coreference with. By default, replace with first reference.
+            replace_with = coreferences[0]
+            for reference in coreferences:      # reference : {}
+                if reference["text"] in ner.keys() or reference["text"][reference["headIndex"]-reference["startIndex"]] in ner.keys():
+                    replace_with = reference
+                sentence_wise_replacements[reference["sentNum"]-1].append((reference,index))
+            replace_coref_with.append(replace_with["text"])  
+        
+        # print(sentence_wise_replacements)
+        # print("\n")
+        
+        # sort tuples in list according to start indices for replacement 
+        sentence_wise_replacements[0].sort(key=lambda tup: tup[0]["startIndex"]) 
+
+        if verbose:
+            for key,val in sentence_wise_replacements.items():
+                print("Sent no# ",key)
+                for item in val:
+                    print(item[0]["text"]," ",item[0]["startIndex"]," ",item[0]["endIndex"]," -> ",replace_coref_with[item[1]]," replacement correl #",item[1], end ="   ||| ")
+                print("\n")
+
+        
+        #Carry out replacement
+        for index,sent in enumerate(sentences):
+            # Get the replacements in ith sentence
+            replacement_list = sentence_wise_replacements[index]    # replacement_list : [({},int)]
+            # Replace from last to not mess up previous replacement's indices
+            for item in replacement_list[::-1]:                     # item : ({},int)
+                to_replace = item[0]                                # to_replace: {}
+                replace_with = replace_coref_with[item[1]]
+                replaced_sent = ""
+                words = nltk.word_tokenize(sent)
+                
+                # replace only if what is inted to be replaced is the thing we are trying to replace
+                # to_be_replaced = ""
+                # for i in range(to_replace["startIndex"],to_replace["endIndex"]):
+                #     to_be_replaced  += words[i]
+                # if verbose:
+                #     print("Intended Replacement: ", to_replace["text"])
+                #     print("What's to be replaced: ", to_be_replaced)
+                # if to_be_replaced != to_replace["text"]:
+                #     if verbose:
+                #         print("Texts do not match, skipping replacement")
+                #     continue
+
+                if verbose:
+                    print("Original: ",sent)
+                    print("To replace:", to_replace["text"]," | at:",to_replace["startIndex"],to_replace["endIndex"],end='')
+                    print(" With: ",replace_with)
+                # Add words from end till the word(s) that need(s) to be replaced
+                for i in range(len(words)-1,to_replace["endIndex"]-2,-1):
+                    replaced_sent = words[i] + " "+ replaced_sent
+                # Replace
+                replaced_sent = replace_with + " " + replaced_sent
+                # Copy starting sentence
+                for i in range(to_replace["startIndex"]-2,-1,-1):
+                    replaced_sent = words[i] + " "+ replaced_sent
+                if verbose:
+                    print("Result: ",replaced_sent,"\n\n")
+                sentences[index] = replaced_sent
+
+        result = ""
+        for sent in sentences:
+            result += sent
+        if verbose:
+            print("Original text: \n",doc)
+            print("Resolved text:\n ",result)
+        return result
+
+def resolve_coreferences(doc,stanford_core_nlp_path,ner,verbose):
+    coref_obj = CoreferenceResolver()
+    corefs = coref_obj.generate_coreferences(doc,stanford_core_nlp_path)
     #coref.unpickle()
-    coref.resolve_coreferences(doc,ner)
+    result = coref_obj.resolve_coreferences(corefs,doc,ner,verbose)
+    return result
 
 def main():
     if len(sys.argv) == 1:
         print("Usage:   python3 knowledge_graph.py <nltk/stanford/spacy> [<nltk/stanford/spacy> <nltk/stanford/spacy>]")
         return None
+
+    output_path = "./data/output/"
+    ner_pickles_op = output_path + "ner/"
+    coref_cache_path = output_path + "caches/"
+    coref_resolved_op = output_path + "kg/"
     
     stanford_core_nlp_path = input("\n\nProvide (relative/absolute) path to stanford core nlp package.\n Press carriage return to use './stanford-corenlp-full-2018-10-05' as path:")
     if(stanford_core_nlp_path == ''):
         stanford_core_nlp_path = "./stanford-corenlp-full-2018-10-05"
 
-    doc1 = "The fourth Wells account moving to another agency is the packaged paper-products division of Georgia-Pacific Corp., which arrived at Wells only last fall. Like Hertz and the History Channel, it is also leaving for an Omnicom-owned agency, the BBDO South unit of BBDO Worldwide. BBDO South in Atlanta, which handles corporate advertising for Georgia-Pacific, will assume additional duties for brands like Angel Soft toilet tissue and Sparkle paper towels, said Ken Haldin, a spokesman for Georgia-Pacific in Atlanta."
+    file_list = []
+    for f in glob.glob('./data/input/*'):
+        file_list.append(f)
 
-    doc = "The Godfather Vito Corleone is the head of the Corleone mafia family in New York. He is at the event of his daughter's wedding. Michael, Vito's youngest son and a decorated WW II Marine is also present at the wedding. Michael seems to be uninterested in being a part of the family business. Vito is a powerful man, and is kind to all those who give him respect but is ruthless against those who do not. But when a powerful and treacherous rival wants to sell drugs and needs the Don's influence for the same, Vito refuses to do it. What follows is a clash between Vito's fading old values and the new ways which may cause Michael to do the thing he was most reluctant in doing and wage a mob war against all the other mafia families which could tear the Corleone family apart."
+    for file in file_list:
+        with open(file,"r") as f:
+            lines = f.read().splitlines()
+        
+        doc = ""
+        for line in lines:
+            doc += line
 
-    
-    for i in range(1,len(sys.argv)):
-        if(sys.argv[i] == "nltk"):
-            print("\nusing NLTK for NER")
-            nltk_ner = NltkNER()
-            named_entities = nltk_ner.ner(doc)
-            nltk_ner.display(named_entities)
-            # ToDo -- Implement ner_to_dict for nltk_ner
-            spacy_ner = SpacyNER()
-            named_entities = spacy_ner .ner_to_dict(spacy_ner.ner(doc))
-        elif(sys.argv[i]=="stanford"):
-            print("using Stanford for NER (may take a while):  \n\n\n")
-            stanford_ner = StanfordNER()
-            tagged = stanford_ner.ner(doc)
-            ner = stanford_ner.ner(doc)
-            stanford_ner.display(ner)
-            # ToDo -- Implement ner_to_dict for stanford_ner
-            named_entities = spacy_ner.ner_to_dict(spacy_ner.ner(doc))
-        elif(sys.argv[i]=="spacy"):
-            print("\nusing Spacy for NER\n")
-            spacy_ner = SpacyNER()
-            named_entities = spacy_ner.ner(doc)
-            spacy_ner.display(named_entities)
-            named_entities = spacy_ner.ner_to_dict(named_entities)
-    
-    with open("named_entities.pickle","wb") as f:
-        pickle.dump(named_entities, f)
+        print("Read: \n",doc)
 
-    print("\nResolving Coreferences... (This may take a while)\n")
-    resolve_coreferences(doc,stanford_core_nlp_path,named_entities)
+        verbose = False
+        for i in range(1,len(sys.argv)):
+            if(sys.argv[i] == "nltk"):
+                print("\nusing NLTK for NER")
+                nltk_ner = NltkNER()
+                named_entities = nltk_ner.ner(doc)
+                nltk_ner.display(named_entities)
+                # ToDo -- Implement ner_to_dict for nltk_ner
+                spacy_ner = SpacyNER()
+                named_entities = spacy_ner .ner_to_dict(spacy_ner.ner(doc))
+            elif(sys.argv[i]=="stanford"):
+                print("using Stanford for NER (may take a while):  \n\n\n")
+                stanford_ner = StanfordNER()
+                tagged = stanford_ner.ner(doc)
+                ner = stanford_ner.ner(doc)
+                stanford_ner.display(ner)
+                # ToDo -- Implement ner_to_dict for stanford_ner
+                named_entities = spacy_ner.ner_to_dict(spacy_ner.ner(doc))
+            elif(sys.argv[i]=="spacy"):
+                print("\nusing Spacy for NER\n")
+                spacy_ner = SpacyNER()
+                named_entities = spacy_ner.ner(doc)
+                spacy_ner.display(named_entities)
+                named_entities = spacy_ner.ner_to_dict(named_entities)
+            elif(sys.argv[i]=="verbose"):
+                verbose = True
+        
+        op_pickle_filename = ner_pickles_op + "named_entity_" + file.split('/')[-1].split('.')[0] + ".pickle"
+        with open(op_pickle_filename,"wb") as f:
+            pickle.dump(named_entities, f)
 
+        print("\nResolving Coreferences... (This may take a while)\n")
+        doc = resolve_coreferences(doc,stanford_core_nlp_path,named_entities,verbose)
+
+        op_filename = coref_resolved_op + file.split('/')[-1]
+        with open(op_filename,"w+") as f:
+            f.write(doc)
 main()
