@@ -96,13 +96,13 @@ class NltkNER:
         print("\n")
 
 class CoreferenceResolver:
-    def generate_coreferences(self,doc,stanford_core_nlp_path,):
+    def generate_coreferences(self,doc,stanford_core_nlp_path,verbose):
         '''
         pickles results object to coref_res.pickle
         the result has the following structure:
         dict of dict of lists of dicts:  { { [ {} ] } }  -- We are interested in the 'corefs' key { [ { } ] }-- Each list has all coreferences to a given pronoun.
         '''
-        nlp = StanfordCoreNLP(stanford_core_nlp_path, quiet=False)
+        nlp = StanfordCoreNLP(stanford_core_nlp_path, quiet =  not verbose)
         props = {'annotators': 'coref', 'pipelineLanguage': 'en'}
         annotated = nlp.annotate(doc, properties=props)
         print("\nannotated\n\n",annotated,"\n\n")
@@ -151,9 +151,6 @@ class CoreferenceResolver:
                     replace_with = reference
                 sentence_wise_replacements[reference["sentNum"]-1].append((reference,index))
             replace_coref_with.append(replace_with["text"])  
-        
-        # print(sentence_wise_replacements)
-        # print("\n")
         
         # sort tuples in list according to start indices for replacement 
         sentence_wise_replacements[0].sort(key=lambda tup: tup[0]["startIndex"]) 
@@ -215,16 +212,18 @@ class CoreferenceResolver:
 
 def resolve_coreferences(doc,stanford_core_nlp_path,ner,verbose):
     coref_obj = CoreferenceResolver()
-    corefs = coref_obj.generate_coreferences(doc,stanford_core_nlp_path)
+    corefs = coref_obj.generate_coreferences(doc,stanford_core_nlp_path,verbose)
     #coref.unpickle()
     result = coref_obj.resolve_coreferences(corefs,doc,ner,verbose)
     return result
 
 def main():
     if len(sys.argv) == 1:
-        print("Usage:   python3 knowledge_graph.py <nltk/stanford/spacy> [<nltk/stanford/spacy> <nltk/stanford/spacy>]")
+        print("Usage:   python3 knowledge_graph.py <nltk/stanford/spacy> [optimized,verbose,nltk,stanford,spacy]")
         return None
 
+    verbose = False
+    execute_coref_resol = False
     output_path = "./data/output/"
     ner_pickles_op = output_path + "ner/"
     coref_cache_path = output_path + "caches/"
@@ -246,9 +245,10 @@ def main():
         for line in lines:
             doc += line
 
-        print("Read: \n",doc)
+        if verbose:
+            print("Read: \n",doc)
 
-        verbose = False
+        
         for i in range(1,len(sys.argv)):
             if(sys.argv[i] == "nltk"):
                 print("\nusing NLTK for NER")
@@ -274,13 +274,17 @@ def main():
                 named_entities = spacy_ner.ner_to_dict(named_entities)
             elif(sys.argv[i]=="verbose"):
                 verbose = True
+            elif(sys.argv[i]=="optimized"):
+                execute_coref_resol = True
         
+        # Save named entities
         op_pickle_filename = ner_pickles_op + "named_entity_" + file.split('/')[-1].split('.')[0] + ".pickle"
         with open(op_pickle_filename,"wb") as f:
             pickle.dump(named_entities, f)
 
-        print("\nResolving Coreferences... (This may take a while)\n")
-        doc = resolve_coreferences(doc,stanford_core_nlp_path,named_entities,verbose)
+        if(execute_coref_resol):
+            print("\nResolving Coreferences... (This may take a while)\n")
+            doc = resolve_coreferences(doc,stanford_core_nlp_path,named_entities,verbose)
 
         op_filename = coref_resolved_op + file.split('/')[-1]
         with open(op_filename,"w+") as f:
