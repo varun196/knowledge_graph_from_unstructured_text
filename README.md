@@ -2,6 +2,8 @@
 
 The project is a complete end-to-end solution for generating knowledge graphs from unstructured data. NER can be run on input by either NLTK, Spacy or Stanford APIs. Optionally, coreference resolution can be performed which is done by python wrapper to stanford's core NLP API. Relation extraction is then done using stanford's open ie. Lastly, post-processing is done to get csv file which can be uploaded to graph commons to visualize the knowledge graph.
 
+More details can be found in the Approach folder.
+
 ## Running the code
 
 1. Clone Repository
@@ -36,6 +38,8 @@ The following installation steps are written w.r.t. linux operating system and p
 7. Install stanfordcorenlp python package:
     `pip3 install stanfordcorenlp`
 8. Download and unzip stanford-corenlp-full: https://stanfordnlp.github.io/CoreNLP/download.html
+9. Download and setup stanford ner: https://nlp.stanford.edu/software/CRF-NER.shtml#Download as described in NLTK documentation: http://www.nltk.org/api/nltk.tag.html#module-nltk.tag.stanford  (Not required if already present due to git clone)
+10. Download and unzip stanford open-ie (Not required if already present due to git clone)
 
 ### knowledge_graph.py
 
