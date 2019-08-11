@@ -7,7 +7,7 @@ More details can be found in the Approach folder.
 ## Running the code
 
 1. Clone Repository
-2. Ensure your system is setup properly
+2. Ensure your system is setup properly (Refer Setup instructions below)
 3. Put your input data files (.txt) in data/input
 4. Run knowledge_graph.py       
     `python3 knowledge_graph.py spacy`
@@ -64,7 +64,7 @@ options:
 
 e.g.:
 
-`python3 knowledge_graph.py optimized verbose nltk spacy`
+`python3 knowledge_graph.py optimized verbose nltk spacy`  
 will o/p ner via nltk and spacy, and perform coreference resolution
 
 
@@ -74,6 +74,6 @@ The input unstructured data files must be in ./data/input folder. I.e. data fold
 
 ##### outputs from knowledge_graph.py
 
-data/output/ner     ---  contains recognised named entities
-data/output/caches  --- Intended to contain result pickles of coreferences obtained by stanford's core nlp
+data/output/ner     ---  contains recognised named entities  
+data/output/caches  --- Intended to contain result pickles of coreferences obtained   by stanford's core nlp  
 data/output/kg      --- contains input files with coreferences resolved 
