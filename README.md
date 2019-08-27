@@ -22,25 +22,29 @@ More details can be found in the Approach folder.
 
 The following installation steps are written w.r.t. linux operating system and python3 language.
 
-1. Create a new python3 virtual environment:
+1. Create a new python3 virtual environment:  
     `python3 -m venv <path_to_env/env_name>`
-2. Switch to the environment:
-    `activate path_to_env/env_name/bin/activate`
-3. Install Spacy:
+2. Switch to the environment:  
+    `source path_to_env/env_name/bin/activate`
+3. Install Spacy:  
     `pip3 install spacy`
-4. Install en_core_web_sm model for spacy:
+4. Install en_core_web_sm model for spacy:  
     `python3 -m spacy download en_core_web_sm`
-5. Install nltk:
+5. Install nltk:  
     `pip3 install nltk`
-6. Install required nltk data. Either install required packages individually or install all packages by using
-    `python -m nltk.downloader all`
+6. Install required nltk data. Either install required packages individually or install all packages by using  
+    `python -m nltk.downloader all`  
     Refer: https://www.nltk.org/data.html
-7. Install stanfordcorenlp python package:
+7. Install stanfordcorenlp python package:  
     `pip3 install stanfordcorenlp`
-8. Download and unzip stanford-corenlp-full: https://stanfordnlp.github.io/CoreNLP/download.html
-9. Download and setup stanford ner: https://nlp.stanford.edu/software/CRF-NER.shtml#Download as described in NLTK documentation: http://www.nltk.org/api/nltk.tag.html#module-nltk.tag.stanford  (Not required if already present due to git clone)
+8. Download and unzip stanford-corenlp-full:   
+   https://stanfordnlp.github.io/CoreNLP/download.html
+9.  Download and setup stanford ner: https://nlp.stanford.edu/software/CRF-NER.shtml#Download as described in NLTK documentation: http://www.nltk.org/api/nltk.tag.html#module-nltk.tag.stanford  (Not required if already present due to git clone)
 10. Download and unzip stanford open-ie (Not required if already present due to git clone)
-
+11. Install python-tk:  
+    `sudo apt-get install python3-tk`
+12. Install pandas:  
+    `pip3 install pandas`
 ### knowledge_graph.py
 
 Performs Named Entity Recognition (NER) on input data by using either NLTK, Spacy or Stanford (or all of them). Also performs coreference resolution. The coreference is used by relation_extractor.py . The recognised NER are used by create_structured_csv.py
